@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Generar Ticket</title>
+  <style>
+    body { font-family: Arial, sans-serif; text-align: center; margin: 0; padding: 0; background: #f4f4f9; }
+    nav { background: #333; padding: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; padding: 8px 12px; background: #444; border-radius: 5px; font-size: 0.9rem; font-weight: bold; }
+    nav a.active { background: #007bff; }
+    .content { padding: 20px; }
+    input, button { padding: 12px; font-size: 1rem; margin: 5px; width: 80%; max-width: 300px; box-sizing: border-box; }
+    button { background: #28a745; color: white; border: none; border-radius: 5px; font-weight: bold; cursor: pointer; }
+    #status { margin-top: 15px; font-weight: bold; color: #333; }
+    #qrContainer { margin-top: 20px; display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+    .ticket-card { background: white; border: 1px solid #ccc; padding: 15px; border-radius: 8px; width: 250px; box-shadow: 0 2px 6px rgba(0,0,0,0.1); }
+    .ticket-card img { width: 100%; max-width: 200px; height: auto; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/">📷 Escáner</a>
+    <a href="/crear.html" class="active">➕ Generar Ticket</a>
+    <a href="/lista.html">📋 Lista</a>
+  </nav>
+
+  <div class="content">
+    <h2>Generar Entradas con QR</h2>
+    <input type="text" id="comprador" placeholder="Nombre del Comprador"><br>
+    <input type="number" id="cantidad" placeholder="Cantidad (Máx. 10)" value="1" min="1" max="10"><br>
+    <button type="button" onclick="crearEntradas()">Crear Entradas</button>
+
+    <div id="status"></div>
+    <div id="qrContainer"></div>
+  </div>
+
+  <script>
+    async function crearEntradas() {
+      const compradorVal = document.getElementById('comprador').value.trim();
+      const cantidadVal = document.getElementById('cantidad').value;
+      let cantNum = parseInt(cantidadVal, 10) || 1;
+      const statusDiv = document.getElementById('status');
+      const container = document.getElementById('qrContainer');
+
+      if (!compradorVal) {
+        alert('Ingresa el nombre del comprador');
+        return;
+      }
+
+      // Validar límite en frontend
+      if (cantNum > 10) {
+        alert('El máximo permitido por compra es de 10 entradas.');
+        document.getElementById('cantidad').value = 10;
+        return;
+      }
+
+      if (cantNum < 1) {
+        alert('Debes ingresar al menos 1 entrada.');
+        document.getElementById('cantidad').value = 1;
+        return;
+      }
+
+      statusDiv.innerText = 'Generando entradas...';
+      container.innerHTML = '';
+
+      try {
+        const res = await fetch('/api/crear-ticket', {
+          method: 'POST',
+          headers: { 
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ comprador: compradorVal, cantidad: cantNum })
+        });
+
+        if (!res.ok) {
+          const errData = await res.json();
+          throw new Error(errData.error || 'Error en el servidor');
+        }
+
+        const data = await res.json();
+        statusDiv.innerText = data.mensaje || 'Entradas creadas';
+
+        const lista = Array.isArray(data.tickets) ? data.tickets : [];
+
+        lista.forEach(t => {
+          container.innerHTML += `
+            <div class="ticket-card">
+              <h3>Entrada ${t.numeroTicket} de ${t.totalTickets}</h3>
+              <p><strong>Comprador:</strong> ${t.comprador}</p>
+              <img src="${t.qrImage}" alt="QR Code"><br><br>
+              <a href="/api/qr/${t.id}" download>
+                <button type="button" style="background:#007bff; width: 100%;">📥 Descargar QR</button>
+              </a>
+            </div>
+          `;
+        });
+      } catch (err) {
+        console.error(err);
+        statusDiv.innerText = `❌ ${err.message}`;
+      }
+    }
+  </script>
+</body>
+</html>
