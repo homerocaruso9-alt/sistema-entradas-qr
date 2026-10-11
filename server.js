@@ -1,12 +1,11 @@
 const express = require('express');
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
 const path = require('path');
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const initDB = require('./database'); // Importa la conexión a Supabase
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 let db;
 
@@ -14,26 +13,6 @@ let db;
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-
-// Inicializar la base de datos
-async function initDB() {
-  db = await open({
-    filename: path.join(__dirname, 'base.db'),
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS tickets (
-      id TEXT PRIMARY KEY,
-      comprador TEXT NOT NULL,
-      estado TEXT DEFAULT 'PAGADO',
-      fecha_creacion DATETIME DEFAULT CURRENT_TIMESTAMP,
-      fecha_uso DATETIME
-    )
-  `);
-
-  console.log('✅ Base de datos SQLite conectada correctamente.');
-}
 
 // ----------------------------------------------------
 // RUTAS Y ENDPOINTS DE LA API
@@ -53,8 +32,9 @@ app.post('/api/crear-ticket', async (req, res) => {
   try {
     for (let i = 0; i < numEntradas; i++) {
       const id = uuidv4();
-      await db.run(
-        `INSERT INTO tickets (id, comprador, estado) VALUES (?, ?, 'PAGADO')`,
+      // PostgreSQL usa $1, $2 en lugar de ?
+      await db.query(
+        `INSERT INTO tickets (id, comprador, estado) VALUES ($1, $2, 'PAGADO')`,
         [id, comprador]
       );
 
@@ -106,7 +86,9 @@ app.post('/api/escanear', async (req, res) => {
   }
 
   try {
-    const ticket = await db.get(`SELECT * FROM tickets WHERE id = ?`, [id]);
+    // Con PostgreSQL, el resultado viene en .rows[0]
+    const result = await db.query(`SELECT * FROM tickets WHERE id = $1`, [id]);
+    const ticket = result.rows[0];
 
     if (!ticket) {
       return res.status(404).json({ valido: false, mensaje: '❌ TICKET INEXISTENTE O FALSO' });
@@ -121,8 +103,8 @@ app.post('/api/escanear', async (req, res) => {
 
     // Marcar como usado
     const fechaUso = new Date().toLocaleString();
-    await db.run(
-      `UPDATE tickets SET estado = 'USADO', fecha_uso = ? WHERE id = ?`,
+    await db.query(
+      `UPDATE tickets SET estado = 'USADO', fecha_uso = $1 WHERE id = $2`,
       [fechaUso, id]
     );
 
@@ -139,16 +121,18 @@ app.post('/api/escanear', async (req, res) => {
 // 4. Listar todos los tickets registrados
 app.get('/api/tickets', async (req, res) => {
   try {
-    const tickets = await db.all(`SELECT * FROM tickets ORDER BY fecha_creacion DESC`);
-    res.json(tickets);
+    // Con PostgreSQL, obtenemos las filas con .rows
+    const result = await db.query(`SELECT * FROM tickets ORDER BY fecha_creacion DESC`);
+    res.json(result.rows);
   } catch (err) {
     console.error('Error al obtener lista de tickets:', err);
     res.status(500).json({ error: 'Error al consultar la base de datos' });
   }
 });
 
-// Arrancar el servidor
-initDB().then(() => {
+// Arrancar el servidor conectando primero a Supabase
+initDB().then((pool) => {
+  db = pool;
   app.listen(PORT, () => {
     console.log(`🚀 Servidor ejecutándose en http://localhost:${PORT}`);
   });

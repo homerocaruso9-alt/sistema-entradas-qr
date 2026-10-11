@@ -1,22 +1,23 @@
-const sqlite3 = require('sqlite3').verbose();
-const { open } = require('sqlite');
+const { Pool } = require('pg');
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 async function initDB() {
-  const db = await open({
-    filename: './entradas.db',
-    driver: sqlite3.Database
-  });
-
-  await db.exec(`
+  await pool.query(`
     CREATE TABLE IF NOT EXISTS tickets (
       id TEXT PRIMARY KEY,
       comprador TEXT NOT NULL,
       estado TEXT DEFAULT 'PAGADO',
-      fecha_uso DATETIME
+      fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      fecha_uso TIMESTAMP
     );
   `);
 
-  return db;
+  console.log('Base de datos conectada a Supabase correctamente.');
+  return pool;
 }
 
 module.exports = initDB;
