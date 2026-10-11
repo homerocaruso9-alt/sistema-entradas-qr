@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lista de Entradas Generadas</title>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f4f4f9; }
+    nav { background: #333; padding: 12px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
+    nav a { color: white; text-decoration: none; padding: 8px 12px; background: #444; border-radius: 5px; font-size: 0.9rem; font-weight: bold; }
+    nav a.active { background: #007bff; }
+    .content { padding: 15px; overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; background: white; margin-top: 15px; }
+    th, td { border: 1px solid #ddd; padding: 10px; text-align: left; font-size: 0.9rem; }
+    th { background-color: #333; color: white; }
+    .PAGADO { color: green; font-weight: bold; }
+    .USADO { color: red; font-weight: bold; }
+    .btn-download { background-color: #28a745; color: white; padding: 6px 10px; text-decoration: none; border-radius: 4px; display: inline-block; font-size: 0.85rem; }
+    .btn-update { padding: 10px 15px; background-color: #17a2b8; color: white; border: none; border-radius: 4px; font-weight: bold; cursor: pointer; }
+  </style>
+</head>
+<body>
+
+  <nav>
+    <a href="/">📷 Escáner</a>
+    <a href="/crear.html">➕ Generar Ticket</a>
+    <a href="/lista.html" class="active">📋 Lista</a>
+  </nav>
+
+  <div class="content">
+    <h2>Registro General de Tickets</h2>
+    <button class="btn-update" onclick="cargarTickets()">🔄 Actualizar Lista</button>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Comprador</th>
+          <th>Estado</th>
+          <th>Acciones</th>
+        </tr>
+      </thead>
+      <tbody id="tablaTickets"></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function cargarTickets() {
+      const res = await fetch('/api/tickets', {
+        headers: { 'bypass-tunnel-reminder': 'true' }
+      });
+      const tickets = await res.json();
+      const tbody = document.getElementById('tablaTickets');
+
+      tbody.innerHTML = tickets.map(t => {
+        const botonDescarga = t.estado === 'PAGADO' 
+          ? `<a class="btn-download" href="/api/qr/${t.id}" download>📥 Descargar QR</a>`
+          : `-`;
+
+        return `
+          <tr>
+            <td><strong>${t.comprador}</strong><br><small style="color:#666">${t.id.substring(0, 8)}...</small></td>
+            <td class="${t.estado}">${t.estado}</td>
+            <td>${botonDescarga}</td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    cargarTickets();
+  </script>
+</body>
+</html>
