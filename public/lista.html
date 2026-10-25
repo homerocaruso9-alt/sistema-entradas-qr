@@ -44,6 +44,19 @@
   </div>
 
   <script>
+    // 1. Verificación de contraseña al cargar la página
+    if (sessionStorage.getItem("admin_auth") !== "true") {
+      const password = prompt("🔒 Ingresa la contraseña de administrador para ver la lista:");
+      
+      if (password === "1234") { // Cambia "1234" por tu contraseña si lo deseas
+        sessionStorage.setItem("admin_auth", "true");
+      } else {
+        alert("❌ Contraseña incorrecta");
+        window.location.href = "/"; // Lo redirige al escáner si falla
+      }
+    }
+
+    // 2. Lógica para cargar los tickets
     async function cargarTickets() {
       const res = await fetch('/api/tickets', {
         headers: { 'bypass-tunnel-reminder': 'true' }
@@ -66,6 +79,7 @@
       }).join('');
     }
 
+    // Cargar los tickets al iniciar
     cargarTickets();
   </script>
 </body>
