@@ -21,7 +21,7 @@
 
   <nav>
     <a href="/" class="active">📷 Escáner</a>
-    <a href="/crear.html">➕ Generar Ticket</a>
+    <a href="/crear.html" id="linkCrear">➕ Generar Ticket</a>
     <a href="/lista.html">📋 Lista</a>
   </nav>
 
@@ -32,6 +32,19 @@
   </div>
 
   <script>
+    // 1. Lógica del código de la contraseña para el botón
+    document.getElementById('linkCrear').addEventListener('click', function(e) {
+      e.preventDefault(); // Evita que abra la página de inmediato
+      const password = prompt("🔒 Ingresa la contraseña de administrador:");
+      
+      if (password === "1234") { // Cambia "1234" por tu contraseña real
+        window.location.href = this.href;
+      } else if (password !== null) {
+        alert("❌ Contraseña incorrecta");
+      }
+    });
+
+    // 2. Lógica del escáner QR
     const scanner = new Html5QrcodeScanner("reader", { fps: 10, qrbox: 250 });
 
     async function onScanSuccess(qrToken) {
